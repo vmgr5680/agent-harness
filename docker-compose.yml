@@ -1,0 +1,82 @@
+# Local stack: the harness, plus the two things you will immediately want when
+# you look at a run and ask "what happened?" — a metrics scrape and a place to
+# put it. Both are optional and behind a profile, so the default `up` is one
+# container.
+#
+#   docker compose up                          # harness only
+#   docker compose --profile observability up   # + prometheus + grafana
+
+services:
+  harness:
+    build: .
+    image: agent-harness:0.2.0
+    ports:
+      - "8000:8000"
+    environment:
+      # No key: OfflineLlm, and everything still works. With a key: Gemini.
+      AH_PROVIDER: ${AH_PROVIDER:-offline}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GOOGLE_GENAI_USE_VERTEXAI: "FALSE"
+      AH_MODEL_DEEP: ${AH_MODEL_DEEP:-gemini-3.1-flash-lite}
+      AH_ENV: ${AH_ENV:-prod}
+      AH_LOG_FORMAT: json
+      AH_LOG_LEVEL: ${AH_LOG_LEVEL:-INFO}
+      # Start in shadow. Promote to enforce once the finding rate is boring.
+      AH_GUARDRAIL_MODE: ${AH_GUARDRAIL_MODE:-shadow}
+      AH_BUDGET_USD_PER_RUN: ${AH_BUDGET_USD_PER_RUN:-0.05}
+      AH_BUDGET_USD_PER_TENANT_DAY: ${AH_BUDGET_USD_PER_TENANT_DAY:-25}
+      AH_RATE_LIMIT_RPM: ${AH_RATE_LIMIT_RPM:-60}
+      AH_MAX_MODEL_CALLS: ${AH_MAX_MODEL_CALLS:-12}
+      AH_SERVICE_TOKENS: ${AH_SERVICE_TOKENS:-dev-token-abc:acme:agent.run|evals.run|kb.read|orders.read|orders.write}
+      AH_SESSION_DB_URL: sqlite:////data/sessions.db
+    volumes:
+      - harness-data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+    # Defence in depth around a process that runs model-chosen tools.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz',timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["observability"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - harness
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: ["observability"]
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  harness-data:
+  grafana-data:

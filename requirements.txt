@@ -1,0 +1,33 @@
+# agent-harness — runtime requirements
+#
+# The runtime is Google's Agent Development Kit. It provides the agentic loop,
+# the tool protocol and its schema validation, sub-agents, sessions and event
+# persistence, the human-in-the-loop confirmation gate, model retries and
+# OpenTelemetry spans. None of that is reimplemented in this project, and the
+# hand-rolled versions that used to be here were deleted rather than kept.
+#
+# [db] pulls SQLAlchemy in for DatabaseSessionService, which is what persists
+# the event trail — and the event trail is the audit log.
+google-adk[db]>=2.9,<3.0
+# DatabaseSessionService is async-only in ADK 2.9, so SQLAlchemy runs its sync
+# layer through greenlet. google-adk[db] does not pull it in, and without it
+# any AH_SESSION_DB_URL fails at startup rather than at install.
+greenlet>=3.0
+
+# --- HTTP service layer (optional) -------------------------------------------
+# Used only in src/agent_harness/api/. The package is importable and fully
+# usable without it, which matters for batch jobs and notebooks.
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+
+# --- MCP servers (optional) --------------------------------------------------
+# Only needed to connect to a third-party MCP server. ADK's McpToolset speaks
+# the protocol; src/agent_harness/tools/mcp.py adds the governance defaults.
+mcp>=1.2
+
+# --- Tests and tooling (also in pyproject [dev]) -----------------------------
+pytest>=8.0
+
+# Note on what is NOT here: no separate LLM SDK. ADK depends on google-genai
+# and resolves `gemini-*` model strings itself, so adding a second client would
+# mean two retry policies and two sets of telemetry for the same calls.

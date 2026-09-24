@@ -1,0 +1,43 @@
+# OS and editor
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# `adk web` writes a session database and its eval history beside each agent.
+# Those are one developer's browsing history, not part of the project.
+.adk/
+.coverage
+htmlcov/
+
+# Data safety. Nothing below this line belongs in version control.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+var/
+*.db
+*.db-wal
+*.db-shm
+*.log
+logs/
+audit/
+audit*.jsonl
+# Eval reports contain question and answer text from real runs. Publish the
+# aggregate numbers, not the transcripts.
+report*.json
+reports/

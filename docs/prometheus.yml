@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: agent-harness
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["harness:8000"]
+
+# The alerts worth having on day one. Copy into a rules file and wire an
+# alertmanager; the point here is which four signals matter, not the syntax.
+#
+#   1. Budget refusals rising
+#        rate(ah_budget_refusals_total[15m]) > 0
+#        Something is looping, or a tenant needs a higher ceiling. Either way
+#        a human should decide which.
+#
+#   2. Guardrail blocks spiking
+#        rate(ah_guardrail_actions_total{action="block"}[15m])
+#          > 3 * rate(ah_guardrail_actions_total{action="block"}[24h] offset 24h)
+#        Either an attack or a bad rail deploy. Both need someone now.
+#
+#   3. Exhausted runs
+#        sum(rate(ah_runs_total{status="exhausted"}[15m]))
+#          / sum(rate(ah_runs_total[15m])) > 0.05
+#        More than one run in twenty is giving up. Usually a tool regressed.
+#
+#   4. Cost per run drifting
+#        sum(rate(ah_llm_cost_usd[1h])) / sum(rate(ah_runs_total[1h]))
+#        Alert on a step change, not an absolute. A prompt edit that adds 300
+#        tokens to every step shows up here and nowhere else.
