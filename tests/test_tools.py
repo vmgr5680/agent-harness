@@ -74,8 +74,16 @@ def test_a_refund_above_the_order_total_is_refused():
 def test_tool_failures_are_returned_to_the_model_not_raised():
     """A tool error is an observation. Raising would end a run that the model
     can usually recover from on the next step."""
-    assert "error" in order_lookup(order_id="ORD-00000")
     assert "error" in calculator(expression="__import__('os')")
+
+
+def test_a_missing_order_is_an_answer_not_an_error():
+    """ "No such order" is a business outcome. It must never look like a failed
+    lookup, and a failed lookup must never look like "no such order"."""
+    result = order_lookup(order_id="ORD-00000")
+    assert result["status"] == "not_found"
+    assert result["order_id"] == "ORD-00000"
+    assert "error" not in result
 
 
 def test_successful_calls_pass_through():

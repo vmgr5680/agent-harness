@@ -172,6 +172,26 @@ def test_p01_chain_never_says_not_found_when_nothing_was_checked() -> None:
     assert NO_ORDER_MESSAGE not in t.outputs
 
 
+def test_p01_chain_never_says_not_found_when_the_lookup_failed() -> None:
+    """A failed lookup is not a missing order. Here the plugin refuses the call
+    (no orders.read scope) and returns an error; the gate must say "could not
+    check", because the order system was never asked."""
+    with pytest.MonkeyPatch.context() as mp:
+        for key, value in _OFFLINE.items():
+            mp.setenv(key, value)
+        settings = concept_settings()
+    app = App(
+        name="chain_denied",
+        root_agent=chain(lambda: OfflineLlm()),
+        plugins=[GovernancePlugin(settings, scopes=frozenset({"kb.read"}), tenant_id="t")],
+    )
+    t = asyncio.run(_drive(app, "What is the status of order ORD-10021?"))
+    assert "unchecked" in t.routes
+    assert UNCHECKED_MESSAGE in t.outputs
+    assert NO_ORDER_MESSAGE not in t.outputs
+    assert not t.ran("writer")
+
+
 def test_p01_chain_redacts_inside_the_graph(apps: dict[str, tuple[Concept, App]]) -> None:
     t = run(apps, "p01_chain")
     seen = " ".join(t.responses)

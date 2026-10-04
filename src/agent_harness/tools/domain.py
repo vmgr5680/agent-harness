@@ -34,6 +34,14 @@ class DomainError(ValueError):
     """
 
 
+class OrderNotFound(DomainError):
+    """The order system looked, and there is no such order.
+
+    A business answer, not a failure. Kept as its own type so a caller can
+    tell "no such order" apart from "the lookup could not be done".
+    """
+
+
 _DATA: Final = Path(__file__).resolve().parents[3] / "data" / "fixtures.json"
 
 
@@ -268,7 +276,7 @@ def order_lookup(args: dict[str, Any]) -> dict[str, Any]:
     order_id = str(args["order_id"]).upper()
     order = _FIXTURES["orders"].get(order_id)
     if order is None:
-        raise DomainError(f"no order with id {order_id}")
+        raise OrderNotFound(f"no order with id {order_id}")
     return dict(order)
 
 

@@ -178,9 +178,10 @@ def chain(model: Callable[[], Any]) -> Workflow:
         # lookup agent's prose. Prose says "I could not find it" both when the
         # order is missing and when the model was down and nothing was checked.
         response = _last_tool_response(ctx, "order_lookup")
-        if response is None:
+        if response is None or "error" in response:
+            # Nothing came back, or the lookup failed: nothing was checked.
             ctx.route = "unchecked"
-        elif "error" in response:
+        elif response.get("status") == "not_found":
             ctx.route = "not_found"
         else:
             ctx.route = "found"

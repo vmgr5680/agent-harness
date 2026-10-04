@@ -88,10 +88,15 @@ def order_lookup(order_id: str) -> dict[str, Any]:
         order_id: The order identifier.
 
     Returns:
-        The order record, or an error if no such order exists.
+        The order record; status "not_found" if no such order exists; or an
+        error if the lookup could not be done.
     """
     try:
         return builtin.order_lookup({"order_id": order_id})
+    except builtin.OrderNotFound as exc:
+        # A business answer, not a failure. Returned as its own status so no
+        # caller can confuse "no such order" with "the lookup failed".
+        return {"status": "not_found", "order_id": order_id.upper(), "detail": str(exc)}
     except Exception as exc:  # noqa: BLE001 - a tool error is an observation
         # Returned rather than raised: the model reads this and usually
         # recovers on the next step. Raising would end the run.
